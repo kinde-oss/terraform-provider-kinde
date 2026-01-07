@@ -1,0 +1,74 @@
+package provider
+
+import (
+	"errors"
+	"fmt"
+	"net/http"
+	"reflect"
+	"sort"
+	"strings"
+)
+
+// Package provider contains the provider implementation.
+
+// splitID splits a colon-separated ID into its parts and validates the number of parts.
+func splitID(id string, expectedParts int, format string) ([]string, error) {
+	parts := strings.Split(id, ":")
+	if len(parts) != expectedParts {
+		return nil, fmt.Errorf("invalid ID format. Expected format: %s", format)
+	}
+	return parts, nil
+}
+
+func sortStringSlice(slice []string) []string {
+	if slice == nil {
+		return nil
+	}
+	sorted := make([]string, len(slice))
+	copy(sorted, slice)
+	sort.Strings(sorted)
+	return sorted
+}
+
+func isNotFoundError(err error) bool {
+	return hasStatusCode(err, http.StatusNotFound)
+}
+
+func hasStatusCode(err error, code int) bool {
+	for current := err; current != nil; current = errors.Unwrap(current) {
+		status, ok := statusCodeFromError(current)
+		if ok && status == code {
+			return true
+		}
+	}
+	return false
+}
+
+func statusCodeFromError(err error) (int, bool) {
+	if err == nil {
+		return 0, false
+	}
+	val := reflect.ValueOf(err)
+	if !val.IsValid() {
+		return 0, false
+	}
+	if val.Kind() == reflect.Pointer {
+		if val.IsNil() {
+			return 0, false
+		}
+		val = val.Elem()
+	}
+	if val.Kind() != reflect.Struct {
+		return 0, false
+	}
+	field := val.FieldByName("StatusCode")
+	if !field.IsValid() {
+		return 0, false
+	}
+	switch field.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return int(field.Int()), true
+	default:
+		return 0, false
+	}
+}

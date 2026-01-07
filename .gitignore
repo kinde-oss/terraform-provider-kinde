@@ -21,5 +21,9 @@ coverage/
 # System files
 .DS_Store
 
+# Serena mcp
+.serena
+project.yml
+
 # ---------------------------------------------------------------------
 # Add specific rules here…
