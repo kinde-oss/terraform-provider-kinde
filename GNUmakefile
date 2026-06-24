@@ -1,5 +1,12 @@
 default: testacc
 
+LOCAL_PROVIDER_DIR = $(CURDIR)/.tmp
+LOCAL_PROVIDER_BINARY = $(LOCAL_PROVIDER_DIR)/terraform-provider-kinde
+LOCAL_PROVIDER_TFRC = $(LOCAL_PROVIDER_DIR)/terraform-dev.tfrc
+EXAMPLE ?= examples/resources/kinde_role
+PROVIDER_SOURCE ?= nxt-fwd/kinde
+RESOURCE_EXAMPLES := $(sort $(wildcard examples/resources/*))
+
 # Run acceptance tests
 .PHONY: testacc
 testacc:
@@ -45,6 +52,28 @@ build: docs-validate
 install: build
 	go install -v ./...
 
+# Run a manual Terraform smoke test against a local provider binary.
+.PHONY: example-smoke
+example-smoke:
+	mkdir -p "$(LOCAL_PROVIDER_DIR)"
+	go build -o "$(LOCAL_PROVIDER_BINARY)" .
+	printf 'provider_installation {\n  dev_overrides {\n    "%s" = "%s"\n  }\n  direct {}\n}\n' "$(PROVIDER_SOURCE)" "$(LOCAL_PROVIDER_DIR)" > "$(LOCAL_PROVIDER_TFRC)"
+	rm -rf "$(EXAMPLE)/.terraform" "$(EXAMPLE)/.terraform.lock.hcl" "$(EXAMPLE)/terraform.tfstate" "$(EXAMPLE)/terraform.tfstate.backup"
+	set -a && . ./.env && set +a && TF_CLI_CONFIG_FILE="$(LOCAL_PROVIDER_TFRC)" terraform -chdir="$(EXAMPLE)" init -backend=false
+	set -a && . ./.env && set +a && TF_CLI_CONFIG_FILE="$(LOCAL_PROVIDER_TFRC)" terraform -chdir="$(EXAMPLE)" validate
+	set -a && . ./.env && set +a && TF_CLI_CONFIG_FILE="$(LOCAL_PROVIDER_TFRC)" terraform -chdir="$(EXAMPLE)" plan -input=false
+	set -a && . ./.env && set +a && TF_CLI_CONFIG_FILE="$(LOCAL_PROVIDER_TFRC)" terraform -chdir="$(EXAMPLE)" apply -input=false -auto-approve
+	set -a && . ./.env && set +a && TF_CLI_CONFIG_FILE="$(LOCAL_PROVIDER_TFRC)" terraform -chdir="$(EXAMPLE)" plan -input=false
+	set -a && . ./.env && set +a && TF_CLI_CONFIG_FILE="$(LOCAL_PROVIDER_TFRC)" terraform -chdir="$(EXAMPLE)" destroy -input=false -auto-approve
+	rm -rf "$(EXAMPLE)/.terraform" "$(EXAMPLE)/.terraform.lock.hcl" "$(EXAMPLE)/terraform.tfstate" "$(EXAMPLE)/terraform.tfstate.backup"
+
+# Run the local-provider smoke test against every resource example module.
+.PHONY: example-smoke-all
+example-smoke-all:
+	for example in $(RESOURCE_EXAMPLES); do \
+		$(MAKE) example-smoke EXAMPLE="$$example" || exit 1; \
+	done
+
 # Clean build artifacts
 .PHONY: clean
 clean:
@@ -68,4 +97,4 @@ coverage:
 # some resources might remain. These should be manually cleaned up in
 # your Kinde account.
 
-.PHONY: default build clean coverage docs docs-validate all
+.PHONY: default build clean coverage docs docs-validate all example-smoke example-smoke-all

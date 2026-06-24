@@ -30,3 +30,9 @@ project.yml
 
 # ---------------------------------------------------------------------
 # Add specific rules here…
+
+# Local Terraform smoke-test artifacts
+.tmp/
+.terraform/
+*.tfstate
+*.tfstate.*

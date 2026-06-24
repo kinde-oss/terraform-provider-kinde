@@ -1,33 +1,29 @@
-# Basic organization user membership
-resource "kinde_organization_user" "basic" {
-  organization_code = "org_123" # Replace with your organization code
-  user_id          = kinde_user.example.id
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
 }
 
-# Organization user with roles
-resource "kinde_organization_user" "with_roles" {
-  organization_code = "org_123" # Replace with your organization code
-  user_id          = kinde_user.example.id
-  roles            = [
-    kinde_role.admin.id,
-    kinde_role.viewer.id
-  ]
+locals {
+  smoke_suffix = random_string.suffix.result
 }
 
-# Full example with user creation and organization membership
+resource "kinde_organization" "example" {
+  name = "ms_${local.smoke_suffix}_organization_user_org"
+}
+
 resource "kinde_user" "example" {
-  first_name = "John"
-  last_name  = "Doe"
+  first_name = "Manual"
+  last_name  = "Membership"
   identities = [
     {
       type  = "email"
-      value = "john.doe@example.com"
+      value = "ms.organization.user.basic.${local.smoke_suffix}@example.com"
     }
   ]
 }
 
-resource "kinde_organization_user" "full_example" {
-  organization_code = "org_123" # Replace with your organization code
-  user_id          = kinde_user.example.id
-  roles            = [kinde_role.admin.id]
+resource "kinde_organization_user" "example" {
+  organization_code = kinde_organization.example.code
+  user_id           = kinde_user.example.id
 }

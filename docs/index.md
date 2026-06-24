@@ -27,5 +27,5 @@ provider "kinde" {
 
 - `audience` (String) Kinde M2M application audience, also set by KINDE_AUDIENCE
 - `client_id` (String) Kinde M2M application client id, also set by KINDE_CLIENT_ID
-- `client_secret` (String) Kinde M2M application client secret, also set by KINDE_CLIENT_SECRET
+- `client_secret` (String, Sensitive) Kinde M2M application client secret, also set by KINDE_CLIENT_SECRET
 - `domain` (String) Kinde organisation domain, also set by KINDE_DOMAIN 

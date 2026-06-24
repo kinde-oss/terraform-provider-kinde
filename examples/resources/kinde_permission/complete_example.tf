@@ -10,20 +10,6 @@ resource "kinde_permission" "manage_users" {
   description = "Manual smoke-test permission for managing users"
 }
 
-resource "kinde_role" "full_example" {
-  name        = "ms_${local.smoke_suffix}_full_role"
-  key         = "ms_${local.smoke_suffix}_full_role"
-  description = "Complete role example for manual Terraform smoke testing"
-  permissions = [
-    kinde_permission.view_users.id,
-    kinde_permission.manage_users.id,
-  ]
-}
-
-output "full_example_role_id" {
-  value = kinde_role.full_example.id
-}
-
 output "permission_ids" {
   value = [
     kinde_permission.view_users.id,

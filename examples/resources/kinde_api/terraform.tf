@@ -3,6 +3,9 @@ terraform {
     kinde = {
       source = "nxt-fwd/kinde"
     }
+    random = {
+      source = "hashicorp/random"
+    }
   }
 }
 
