@@ -5,6 +5,7 @@ package provider
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -73,19 +74,27 @@ func (p *KindeProvider) Configure(ctx context.Context, req provider.ConfigureReq
 	opts := kinde.NewClientOptions()
 
 	if !data.Domain.IsNull() && !data.Domain.IsUnknown() {
-		opts.WithDomain(data.Domain.ValueString())
+		if domain := strings.TrimSpace(data.Domain.ValueString()); domain != "" {
+			opts.WithDomain(domain)
+		}
 	}
 
 	if !data.Audience.IsNull() && !data.Audience.IsUnknown() {
-		opts.WithAudience(data.Audience.ValueString())
+		if audience := strings.TrimSpace(data.Audience.ValueString()); audience != "" {
+			opts.WithAudience(audience)
+		}
 	}
 
 	if !data.ClientID.IsNull() && !data.ClientID.IsUnknown() {
-		opts.WithClientID(data.ClientID.ValueString())
+		if clientID := strings.TrimSpace(data.ClientID.ValueString()); clientID != "" {
+			opts.WithClientID(clientID)
+		}
 	}
 
 	if !data.ClientSecret.IsNull() && !data.ClientSecret.IsUnknown() {
-		opts.WithClientSecret(data.ClientSecret.ValueString())
+		if clientSecret := strings.TrimSpace(data.ClientSecret.ValueString()); clientSecret != "" {
+			opts.WithClientSecret(clientSecret)
+		}
 	}
 
 	client := kinde.New(ctx, opts)

@@ -6,12 +6,16 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/nxt-fwd/kinde-go"
 	"github.com/nxt-fwd/kinde-go/api/roles"
 )
@@ -27,6 +31,37 @@ func NewRoleResource() resource.Resource {
 
 type RoleResource struct {
 	client *roles.Client
+}
+
+type nonEmptyStringSetValidator struct{}
+
+func (v nonEmptyStringSetValidator) Description(_ context.Context) string {
+	return "each permission ID must be non-empty"
+}
+
+func (v nonEmptyStringSetValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v nonEmptyStringSetValidator) ValidateSet(ctx context.Context, req validator.SetRequest, resp *validator.SetResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	for index, element := range req.ConfigValue.Elements() {
+		stringValue, ok := element.(basetypes.StringValue)
+		if !ok {
+			continue
+		}
+
+		if strings.TrimSpace(stringValue.ValueString()) == "" {
+			resp.Diagnostics.Append(diag.NewAttributeErrorDiagnostic(
+				req.Path.AtSetValue(stringValue),
+				"Invalid Permission ID",
+				fmt.Sprintf("Permission ID at index %d must not be empty.", index),
+			))
+		}
+	}
 }
 
 func (r *RoleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -59,6 +94,7 @@ func (r *RoleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				MarkdownDescription: "List of permission IDs associated with this role",
 				Optional:            true,
 				ElementType:         types.StringType,
+				Validators:          []validator.Set{nonEmptyStringSetValidator{}},
 			},
 		},
 	}
@@ -134,6 +170,7 @@ func (r *RoleResource) Create(ctx context.Context, req resource.CreateRequest, r
 	// Get the complete role data
 	role, err = r.client.Get(ctx, role.ID)
 	if err != nil {
+		r.cleanupRoleOnCreateFailure(ctx, role.ID)
 		resp.Diagnostics.AddError(
 			"Error Reading Created Role",
 			fmt.Sprintf("Could not read created role: %s", err),
@@ -166,6 +203,7 @@ func (r *RoleResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 		_, err = r.client.UpdatePermissions(ctx, role.ID, updatePermParams)
 		if err != nil {
+			r.cleanupRoleOnCreateFailure(ctx, role.ID)
 			resp.Diagnostics.AddError(
 				"Error Setting Role Permissions",
 				fmt.Sprintf("Could not set permissions for role: %s", err),
@@ -176,6 +214,7 @@ func (r *RoleResource) Create(ctx context.Context, req resource.CreateRequest, r
 		// Get the updated role to ensure we have all fields and permissions
 		role, err = r.client.Get(ctx, role.ID)
 		if err != nil {
+			r.cleanupRoleOnCreateFailure(ctx, role.ID)
 			resp.Diagnostics.AddError(
 				"Error Reading Updated Role",
 				fmt.Sprintf("Could not read updated role: %s", err),
@@ -195,6 +234,14 @@ func (r *RoleResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
+}
+
+func (r *RoleResource) cleanupRoleOnCreateFailure(ctx context.Context, roleID string) {
+	if roleID == "" {
+		return
+	}
+
+	_ = r.client.Delete(ctx, roleID)
 }
 
 func (r *RoleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {

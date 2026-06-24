@@ -16,6 +16,13 @@ func splitID(id string, expectedParts int, format string) ([]string, error) {
 	if len(parts) != expectedParts {
 		return nil, fmt.Errorf("invalid ID format. Expected format: %s", format)
 	}
+
+	for _, part := range parts {
+		if part == "" {
+			return nil, fmt.Errorf("invalid ID format. Expected format: %s", format)
+		}
+	}
+
 	return parts, nil
 }
 
