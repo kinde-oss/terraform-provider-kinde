@@ -54,6 +54,10 @@ func (v nonEmptyStringSetValidator) ValidateSet(ctx context.Context, req validat
 			continue
 		}
 
+		if stringValue.IsNull() || stringValue.IsUnknown() {
+			continue
+		}
+
 		if strings.TrimSpace(stringValue.ValueString()) == "" {
 			resp.Diagnostics.Append(diag.NewAttributeErrorDiagnostic(
 				req.Path.AtSetValue(stringValue),
