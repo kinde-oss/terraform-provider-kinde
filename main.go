@@ -28,7 +28,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.opentofu.org/nxt-fwd/kinde",
+		Address: "registry.terraform.io/nxt-fwd/kinde",
 		Debug:   debug,
 	}
 

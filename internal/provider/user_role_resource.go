@@ -6,7 +6,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -99,7 +98,7 @@ func (r *UserRoleResource) Create(ctx context.Context, req resource.CreateReques
 	// Check if user has any roles in the organization (this verifies membership)
 	_, err := r.client.GetUserRoles(ctx, plan.OrganizationCode.ValueString(), plan.UserID.ValueString())
 	if err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "user_not_in_organization") {
+		if isUserNotInOrganizationError(err) {
 			resp.Diagnostics.AddError(
 				"User Not in Organization",
 				fmt.Sprintf("User %s is not a member of organization %s. Please add the user to the organization before assigning roles.",
@@ -222,11 +221,11 @@ func (r *UserRoleResource) Delete(ctx context.Context, req resource.DeleteReques
 
 func (r *UserRoleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Import format: organization_code:user_id:role_id
-	idParts := strings.Split(req.ID, ":")
-	if len(idParts) != 3 {
+	idParts, err := splitID(req.ID, 3, "organization_code:user_id:role_id")
+	if err != nil {
 		resp.Diagnostics.AddError(
 			"Invalid Import ID",
-			"Import ID must be in the format: organization_code:user_id:role_id",
+			err.Error(),
 		)
 		return
 	}
