@@ -111,7 +111,7 @@ func (r *OrganizationUserResource) Create(ctx context.Context, req resource.Crea
 	// GetUserRoles returns an error when the membership is missing.
 	_, err := r.client.GetUserRoles(ctx, orgCode, userID)
 	memberExists := err == nil
-	if err != nil && !isNotFoundError(err) {
+	if err != nil && !isNotFoundError(err) && !isUserNotInOrganizationError(err) {
 		resp.Diagnostics.AddError(
 			"Error Reading Organization User",
 			fmt.Sprintf("Could not check organization user membership: %s", err),
@@ -181,7 +181,7 @@ func (r *OrganizationUserResource) Read(ctx context.Context, req resource.ReadRe
 	// Get user roles to verify membership
 	roles, err := r.client.GetUserRoles(ctx, state.OrganizationCode.ValueString(), state.UserID.ValueString())
 	if err != nil {
-		if isNotFoundError(err) {
+		if isNotFoundError(err) || isUserNotInOrganizationError(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -307,7 +307,7 @@ func (r *OrganizationUserResource) Delete(ctx context.Context, req resource.Dele
 	}
 
 	if err := r.removeUserFromOrganization(ctx, state.OrganizationCode.ValueString(), state.UserID.ValueString()); err != nil {
-		if isNotFoundError(err) {
+		if isNotFoundError(err) || isUserNotInOrganizationError(err) {
 			return
 		}
 		resp.Diagnostics.AddError(

@@ -5,7 +5,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -13,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/nxt-fwd/kinde-go"
-	"github.com/nxt-fwd/kinde-go/api/users"
 )
 
 // Ensure KindeProvider satisfies various provider interfaces.
@@ -58,6 +56,7 @@ func (p *KindeProvider) Schema(ctx context.Context, req provider.SchemaRequest, 
 			"client_secret": schema.StringAttribute{
 				MarkdownDescription: "Kinde M2M application client secret, also set by KINDE_CLIENT_SECRET",
 				Optional:            true,
+				Sensitive:           true,
 			},
 		},
 	}
@@ -90,17 +89,6 @@ func (p *KindeProvider) Configure(ctx context.Context, req provider.ConfigureReq
 	}
 
 	client := kinde.New(ctx, opts)
-
-	// Validate credentials by making a test API call
-	_, err := client.Users.List(ctx, users.ListParams{PageSize: 1})
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Unable to Create Kinde Client",
-			fmt.Sprintf("Failed to authenticate with Kinde API: %v\n"+
-				"Please verify your domain, client_id, client_secret, and audience are correct.", err),
-		)
-		return
-	}
 
 	resp.DataSourceData = &client
 	resp.ResourceData = &client

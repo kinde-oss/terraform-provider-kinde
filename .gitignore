@@ -25,5 +25,8 @@ coverage/
 .serena
 project.yml
 
+#env
+.env
+
 # ---------------------------------------------------------------------
 # Add specific rules here…

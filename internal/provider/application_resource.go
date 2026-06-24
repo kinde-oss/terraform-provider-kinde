@@ -223,6 +223,10 @@ func (r *ApplicationResource) Read(ctx context.Context, req resource.ReadRequest
 
 	app, err := r.client.Get(ctx, state.ID.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Error Reading Application",
 			fmt.Sprintf("Could not read application ID %s: %s", state.ID.ValueString(), err),
@@ -335,6 +339,9 @@ func (r *ApplicationResource) Delete(ctx context.Context, req resource.DeleteReq
 
 	err := r.client.Delete(ctx, state.ID.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Error Deleting Application",
 			fmt.Sprintf("Could not delete application ID %s: %s", state.ID.ValueString(), err),

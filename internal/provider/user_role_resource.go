@@ -153,6 +153,10 @@ func (r *UserRoleResource) Read(ctx context.Context, req resource.ReadRequest, r
 	// Get user's roles
 	userRoles, err := r.client.GetUserRoles(ctx, state.OrganizationCode.ValueString(), state.UserID.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Error Reading User Roles",
 			fmt.Sprintf("Could not read roles for user %s in organization %s: %s",
@@ -200,6 +204,9 @@ func (r *UserRoleResource) Delete(ctx context.Context, req resource.DeleteReques
 
 	err := r.client.RemoveUserRole(ctx, state.OrganizationCode.ValueString(), state.UserID.ValueString(), state.RoleID.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Error Removing Role from User",
 			fmt.Sprintf("Could not remove role %s from user %s in organization %s: %s",

@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -46,7 +47,36 @@ func expandRoleUpdateParams(plan RoleResourceModel) roles.UpdateParams {
 	}
 }
 
+func normalizeRolePermissions(permissions []string) []string {
+	if len(permissions) == 0 {
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(permissions))
+	normalized := make([]string, 0, len(permissions))
+	for _, permission := range permissions {
+		if permission == "" {
+			continue
+		}
+		if _, exists := seen[permission]; exists {
+			continue
+		}
+		seen[permission] = struct{}{}
+		normalized = append(normalized, permission)
+	}
+
+	if len(normalized) == 0 {
+		return nil
+	}
+
+	sort.Strings(normalized)
+
+	return normalized
+}
+
 func flattenRoleResource(ctx context.Context, role *roles.Role, permissions []string) (RoleResourceModel, error) {
+	permissions = normalizeRolePermissions(permissions)
+
 	var permissionsSet types.Set
 	if len(permissions) > 0 {
 		var diags diag.Diagnostics
@@ -87,7 +117,7 @@ func expandRoleDataSourceModel(model RoleDataSourceModel) *roles.Role {
 
 //nolint:unused
 func flattenRoleDataSource(ctx context.Context, resource *roles.Role, permissions []string) (RoleDataSourceModel, error) {
-	permissionsList, diags := serde.FlattenStringList(ctx, permissions)
+	permissionsList, diags := serde.FlattenStringList(ctx, normalizeRolePermissions(permissions))
 	if diags.HasError() {
 		return RoleDataSourceModel{}, fmt.Errorf("failed to flatten permissions: %v", diags)
 	}

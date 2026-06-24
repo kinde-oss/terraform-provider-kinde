@@ -251,6 +251,10 @@ func (r *ConnectionResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	conn, err := r.client.Get(ctx, state.ID.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Error Reading Connection",
 			fmt.Sprintf("Could not read connection ID %s: %s", state.ID.ValueString(), err),
@@ -325,6 +329,9 @@ func (r *ConnectionResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 	err := r.client.Delete(ctx, state.ID.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Error Deleting Connection",
 			fmt.Sprintf("Could not delete connection ID %s: %s", state.ID.ValueString(), err),
@@ -386,11 +393,15 @@ func (r *ConnectionResource) ValidateConfig(ctx context.Context, req resource.Va
 	if !data.Strategy.IsNull() {
 		strategy := connections.Strategy(data.Strategy.ValueString())
 		if strings.HasPrefix(string(strategy), "oauth2:") {
-			if data.Options == nil || data.Options.IsEmpty() {
+			if data.Options == nil {
 				resp.Diagnostics.AddError(
 					"Missing OAuth2 Options",
-					"options must be set for OAuth2 connections and must include both client_id and client_secret.",
+					"options must be set for OAuth2 connections. Use an explicit empty object (`options = {}`) to intentionally clear sensitive values, or provide both client_id and client_secret.",
 				)
+				return
+			}
+
+			if data.Options.IsEmpty() {
 				return
 			}
 

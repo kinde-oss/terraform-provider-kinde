@@ -56,7 +56,6 @@ jobs:
 
   # Run acceptance tests in a matrix with Terraform CLI versions
   test:
-    if: false
     name: Terraform Provider Acceptance Tests
     needs: build
     runs-on: ubuntu-latest
@@ -83,6 +82,23 @@ jobs:
           terraform_wrapper: false
       - run: go mod download
       - env:
-          TF_ACC: "1"
-        run: go test -v -cover ./internal/provider/
+          TF_ACC: '1'
+          KINDE_DOMAIN: ${{ secrets['KINDE_DOMAIN'] }}
+          KINDE_AUDIENCE: ${{ secrets['KINDE_AUDIENCE'] }}
+          KINDE_CLIENT_ID: ${{ secrets['KINDE_CLIENT_ID'] }}
+          KINDE_CLIENT_SECRET: ${{ secrets['KINDE_CLIENT_SECRET'] }}
+        run: |
+          missing=0
+          for var in KINDE_DOMAIN KINDE_AUDIENCE KINDE_CLIENT_ID KINDE_CLIENT_SECRET; do
+            if [ -z "${!var}" ]; then
+              echo "Skipping acceptance tests: $var is not configured in GitHub secrets."
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -eq 1 ]; then
+            exit 0
+          fi
+
+          go test -v -cover ./internal/provider/
         timeout-minutes: 10

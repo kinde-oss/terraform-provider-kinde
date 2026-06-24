@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"sort"
 	"strings"
 )
 
@@ -20,18 +19,27 @@ func splitID(id string, expectedParts int, format string) ([]string, error) {
 	return parts, nil
 }
 
-func sortStringSlice(slice []string) []string {
-	if slice == nil {
-		return nil
-	}
-	sorted := make([]string, len(slice))
-	copy(sorted, slice)
-	sort.Strings(sorted)
-	return sorted
-}
-
 func isNotFoundError(err error) bool {
 	return hasStatusCode(err, http.StatusNotFound)
+}
+
+func isUserNotInOrganizationError(err error) bool {
+	return containsAnyErrorCode(err, "USER_NOT_IN_ORGANIZATION")
+}
+
+func containsAnyErrorCode(err error, codes ...string) bool {
+	if err == nil {
+		return false
+	}
+
+	message := strings.ToUpper(err.Error())
+	for _, code := range codes {
+		if strings.Contains(message, strings.ToUpper(code)) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func hasStatusCode(err error, code int) bool {

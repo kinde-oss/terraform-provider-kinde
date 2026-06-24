@@ -264,6 +264,10 @@ func (r *OrganizationResource) Read(ctx context.Context, req resource.ReadReques
 
 	organization, err := r.client.Get(ctx, state.Code.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Error Reading Organization",
 			fmt.Sprintf("Could not read organization code %s: %s", state.Code.ValueString(), err),
@@ -405,6 +409,9 @@ func (r *OrganizationResource) Delete(ctx context.Context, req resource.DeleteRe
 
 	err := r.client.Delete(ctx, state.Code.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Error Deleting Organization",
 			fmt.Sprintf("Could not delete organization code %s: %s", state.Code.ValueString(), err),

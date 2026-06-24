@@ -346,6 +346,10 @@ func (r *UserResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 
 	user, err := r.client.Get(ctx, state.ID.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Error Reading User",
 			fmt.Sprintf("Could not read user ID %s: %s", state.ID.ValueString(), err),
@@ -774,6 +778,9 @@ func (r *UserResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 	}
 
 	if err := r.client.Delete(ctx, state.ID.ValueString()); err != nil {
+		if isNotFoundError(err) {
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Error Deleting User",
 			fmt.Sprintf("Could not delete user ID %s: %s", state.ID.ValueString(), err),

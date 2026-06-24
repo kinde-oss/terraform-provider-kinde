@@ -46,10 +46,6 @@ func TestAccRoleResource(t *testing.T) {
 }
 
 func TestAccRoleResource_PermissionOrdering(t *testing.T) {
-	// FIXME: Test is failing with "Provider produced inconsistent result after apply"
-	// .permissions: was cty.SetVal([]cty.Value{cty.StringVal("")}), but now null.
-	t.Skip("Skipping test due to known issue with permissions handling")
-
 	testID := acctest.RandomWithPrefix("tfacc")
 	permission1ID := acctest.RandomWithPrefix("tfacc-perm1")
 	permission2ID := acctest.RandomWithPrefix("tfacc-perm2")
@@ -88,10 +84,6 @@ func TestAccRoleResource_PermissionOrdering(t *testing.T) {
 }
 
 func TestAccRoleResource_RemovePermissions(t *testing.T) {
-	// FIXME: Test is failing with "Provider produced inconsistent result after apply"
-	// .permissions: was cty.SetVal([]cty.Value{cty.StringVal("")}), but now null.
-	t.Skip("Skipping test due to known issue with permissions handling")
-
 	testID := acctest.RandomWithPrefix("tfacc")
 	permission1ID := acctest.RandomWithPrefix("tfacc-perm1")
 	permission2ID := acctest.RandomWithPrefix("tfacc-perm2")

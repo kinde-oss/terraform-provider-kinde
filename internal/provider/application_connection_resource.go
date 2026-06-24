@@ -114,6 +114,10 @@ func (r *ApplicationConnectionResource) Read(ctx context.Context, req resource.R
 	// Get application connections
 	connections, err := r.client.GetConnections(ctx, state.ApplicationID.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Error Reading Application Connections",
 			fmt.Sprintf("Could not read connections for application ID %s: %s", state.ApplicationID.ValueString(), err),
@@ -162,6 +166,9 @@ func (r *ApplicationConnectionResource) Delete(ctx context.Context, req resource
 
 	err := r.client.DisableConnection(ctx, state.ApplicationID.ValueString(), state.ConnectionID.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Error Disabling Connection",
 			fmt.Sprintf("Could not disable connection ID %s for application ID %s: %s", state.ConnectionID.ValueString(), state.ApplicationID.ValueString(), err),
