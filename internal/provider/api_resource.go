@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/nxt-fwd/kinde-go"
 	"github.com/nxt-fwd/kinde-go/api/apis"
 )
@@ -104,6 +105,7 @@ func (r *APIResource) Create(ctx context.Context, req resource.CreateRequest, re
 	// Get the created API to populate computed fields
 	api, err = r.client.Get(ctx, createdAPI.ID)
 	if err != nil {
+		r.cleanupAPIOnCreateFailure(ctx, createdAPI.ID)
 		resp.Diagnostics.AddError(
 			"Error Reading API",
 			fmt.Sprintf("Could not read API ID %s: %s", createdAPI.ID, err),
@@ -114,6 +116,23 @@ func (r *APIResource) Create(ctx context.Context, req resource.CreateRequest, re
 	state := flattenAPIResource(api)
 	diags = resp.State.Set(ctx, state)
 	resp.Diagnostics.Append(diags...)
+}
+
+// cleanupAPIOnCreateFailure best-effort deletes an API that was successfully
+// created but could not be fully read back, so that a failed Create does not
+// leave an orphaned API that Terraform state never tracks (and that
+// `terraform destroy` therefore cannot clean up).
+func (r *APIResource) cleanupAPIOnCreateFailure(ctx context.Context, apiID string) {
+	if apiID == "" {
+		return
+	}
+
+	if err := r.client.Delete(ctx, apiID); err != nil {
+		tflog.Warn(ctx, "Failed to clean up API after create failure", map[string]interface{}{
+			"id":    apiID,
+			"error": err.Error(),
+		})
+	}
 }
 
 func (r *APIResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {

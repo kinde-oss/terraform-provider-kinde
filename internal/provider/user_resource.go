@@ -237,21 +237,24 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 	}
 
 	// Get the final state of the user
-	user, err = r.client.Get(ctx, user.ID)
+	userID := user.ID
+	user, err = r.client.Get(ctx, userID)
 	if err != nil {
+		r.cleanupUserOnCreateFailure(ctx, userID)
 		resp.Diagnostics.AddError(
 			"Error Reading Created User",
-			fmt.Sprintf("Could not read created user ID %s: %s", user.ID, err),
+			fmt.Sprintf("Could not read created user ID %s: %s", userID, err),
 		)
 		return
 	}
 
 	// Get final identities
-	finalIdentities, err := r.client.GetIdentities(ctx, user.ID)
+	finalIdentities, err := r.client.GetIdentities(ctx, userID)
 	if err != nil {
+		r.cleanupUserOnCreateFailure(ctx, userID)
 		resp.Diagnostics.AddError(
 			"Error Reading User Identities",
-			fmt.Sprintf("Could not read identities for user %s: %s", user.ID, err),
+			fmt.Sprintf("Could not read identities for user %s: %s", userID, err),
 		)
 		return
 	}
@@ -337,6 +340,23 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
+}
+
+// cleanupUserOnCreateFailure best-effort deletes a user that was successfully
+// created but could not be fully read back, so that a failed Create does not
+// leave an orphaned user that Terraform state never tracks (and that
+// `terraform destroy` therefore cannot clean up).
+func (r *UserResource) cleanupUserOnCreateFailure(ctx context.Context, userID string) {
+	if userID == "" {
+		return
+	}
+
+	if err := r.client.Delete(ctx, userID); err != nil {
+		tflog.Warn(ctx, "Failed to clean up user after create failure", map[string]interface{}{
+			"id":    userID,
+			"error": err.Error(),
+		})
+	}
 }
 
 func (r *UserResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {

@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/nxt-fwd/kinde-go"
 	"github.com/nxt-fwd/kinde-go/api/organizations"
 )
@@ -179,23 +180,30 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// Capture the code up front: on error, r.client.Get/Update return a nil
+	// *Organization, so organization.Code cannot be safely dereferenced from
+	// their result once an error path is taken.
+	code := organization.Code
+
 	// Get the created organization to ensure we have all fields
-	organization, err = r.client.Get(ctx, organization.Code)
+	organization, err = r.client.Get(ctx, code)
 	if err != nil {
+		r.cleanupOrganizationOnCreateFailure(ctx, code)
 		resp.Diagnostics.AddError(
 			"Error Reading Organization",
-			fmt.Sprintf("Could not read organization code %s: %s", organization.Code, err),
+			fmt.Sprintf("Could not read organization code %s: %s", code, err),
 		)
 		return
 	}
 
 	// Apply optional attributes immediately after creation when requested.
 	if updateParams, needsUpdate := buildOrganizationUpdateParams(plan); needsUpdate {
-		organization, err = r.client.Update(ctx, organization.Code, updateParams)
+		organization, err = r.client.Update(ctx, code, updateParams)
 		if err != nil {
+			r.cleanupOrganizationOnCreateFailure(ctx, code)
 			resp.Diagnostics.AddError(
 				"Error Updating Organization",
-				fmt.Sprintf("Could not update organization code %s after create: %s", organization.Code, err),
+				fmt.Sprintf("Could not update organization code %s after create: %s", code, err),
 			)
 			return
 		}
@@ -255,6 +263,23 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
+}
+
+// cleanupOrganizationOnCreateFailure best-effort deletes an organization that
+// was successfully created but could not be fully configured, so that a
+// failed Create does not leave an orphaned organization that Terraform state
+// never tracks (and that `terraform destroy` therefore cannot clean up).
+func (r *OrganizationResource) cleanupOrganizationOnCreateFailure(ctx context.Context, code string) {
+	if code == "" {
+		return
+	}
+
+	if err := r.client.Delete(ctx, code); err != nil {
+		tflog.Warn(ctx, "Failed to clean up organization after create failure", map[string]interface{}{
+			"code":  code,
+			"error": err.Error(),
+		})
+	}
 }
 
 func (r *OrganizationResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {

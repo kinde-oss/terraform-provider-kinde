@@ -197,6 +197,7 @@ func (r *ApplicationResource) Create(ctx context.Context, req resource.CreateReq
 
 		err = r.client.Update(ctx, app.ID, updateParams)
 		if err != nil {
+			r.cleanupApplicationOnCreateFailure(ctx, app.ID)
 			resp.Diagnostics.AddError(
 				"Error Updating Application",
 				fmt.Sprintf("Could not update application ID %s: %s", app.ID, err),
@@ -211,6 +212,23 @@ func (r *ApplicationResource) Create(ctx context.Context, req resource.CreateReq
 	resp.Diagnostics.Append(diags...)
 
 	tflog.Debug(ctx, "Application creation completed")
+}
+
+// cleanupApplicationOnCreateFailure best-effort deletes an application that was
+// successfully created but could not be fully configured, so that a failed
+// Create does not leave an orphaned application that Terraform state never
+// tracks (and that `terraform destroy` therefore cannot clean up).
+func (r *ApplicationResource) cleanupApplicationOnCreateFailure(ctx context.Context, applicationID string) {
+	if applicationID == "" {
+		return
+	}
+
+	if err := r.client.Delete(ctx, applicationID); err != nil {
+		tflog.Warn(ctx, "Failed to clean up application after create failure", map[string]interface{}{
+			"id":    applicationID,
+			"error": err.Error(),
+		})
+	}
 }
 
 func (r *ApplicationResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {

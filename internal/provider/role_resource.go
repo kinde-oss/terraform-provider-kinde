@@ -6,6 +6,8 @@ package provider
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -32,6 +34,25 @@ func NewRoleResource() resource.Resource {
 type RoleResource struct {
 	client *roles.Client
 }
+
+// rolePermissionsPage adapts a raw /api/v1/roles/{id}/permissions response
+// page to the shared getAllPages pagination helper.
+type rolePermissionsPage struct {
+	Code        string             `json:"code"`
+	Message     string             `json:"message"`
+	NextToken   string             `json:"next_token"`
+	Permissions []roles.Permission `json:"permissions"`
+}
+
+func (p rolePermissionsPage) getData() []roles.Permission { return p.Permissions }
+
+func (p rolePermissionsPage) getNextToken() string { return p.NextToken }
+
+// Compile-time assertion that rolePermissionsPage satisfies kindePage. This
+// also keeps static analysis tools that don't fully trace generic
+// instantiations (e.g. getAllPages[roles.Permission, rolePermissionsPage])
+// from flagging getData/getNextToken as unused.
+var _ kindePage[roles.Permission] = rolePermissionsPage{}
 
 type nonEmptyStringSetValidator struct{}
 
@@ -172,7 +193,7 @@ func (r *RoleResource) Create(ctx context.Context, req resource.CreateRequest, r
 	}
 
 	// Get the complete role data
-	role, err = r.client.Get(ctx, role.ID)
+	role, err = r.getRole(ctx, role.ID)
 	if err != nil {
 		r.cleanupRoleOnCreateFailure(ctx, role.ID)
 		resp.Diagnostics.AddError(
@@ -216,7 +237,7 @@ func (r *RoleResource) Create(ctx context.Context, req resource.CreateRequest, r
 		}
 
 		// Get the updated role to ensure we have all fields and permissions
-		role, err = r.client.Get(ctx, role.ID)
+		role, err = r.getRole(ctx, role.ID)
 		if err != nil {
 			r.cleanupRoleOnCreateFailure(ctx, role.ID)
 			resp.Diagnostics.AddError(
@@ -256,7 +277,7 @@ func (r *RoleResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
-	role, err := r.client.Get(ctx, state.ID.ValueString())
+	role, err := r.getRole(ctx, state.ID.ValueString())
 	if err != nil {
 		if isNotFoundError(err) {
 			resp.State.RemoveResource(ctx)
@@ -367,7 +388,7 @@ func (r *RoleResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	}
 
 	// Get the updated role to ensure we have all fields and permissions
-	role, err := r.client.Get(ctx, plan.ID.ValueString())
+	role, err := r.getRole(ctx, plan.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Updated Role",
@@ -411,7 +432,7 @@ func (r *RoleResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 }
 
 func (r *RoleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	role, err := r.client.Get(ctx, req.ID)
+	role, err := r.getRole(ctx, req.ID)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Kinde Role",
@@ -434,4 +455,51 @@ func (r *RoleResource) ImportState(ctx context.Context, req resource.ImportState
 	if resp.Diagnostics.HasError() {
 		return
 	}
+}
+
+// getRole reads a role's core fields and fully paginated permission list.
+//
+// The kinde-go SDK's roles.Client.Get makes a single, non-paginated request
+// to /api/v1/roles/{id}/permissions, silently truncating roles that have
+// more permissions than fit on one page. This bypasses that by fetching the
+// role's core fields directly and separately walking every permissions page
+// via the shared getAllPages helper.
+func (r *RoleResource) getRole(ctx context.Context, id string) (*roles.Role, error) {
+	endpoint := fmt.Sprintf("/api/v1/roles/%s", url.PathEscape(id))
+	req, err := r.client.NewRequest(ctx, http.MethodGet, endpoint, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var response struct {
+		Code    string     `json:"code"`
+		Message string     `json:"message"`
+		Role    roles.Role `json:"role"`
+	}
+	if err := r.client.DoRequest(req, &response); err != nil {
+		return nil, err
+	}
+
+	permissionIDs, err := r.getRolePermissions(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get role permissions: %w", err)
+	}
+	response.Role.Permissions = permissionIDs
+
+	return &response.Role, nil
+}
+
+func (r *RoleResource) getRolePermissions(ctx context.Context, roleID string) ([]string, error) {
+	endpoint := fmt.Sprintf("/api/v1/roles/%s/permissions", url.PathEscape(roleID))
+	permissions, err := getAllPages[roles.Permission, rolePermissionsPage](ctx, r.client, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	permissionIDs := make([]string, 0, len(permissions))
+	for _, permission := range permissions {
+		permissionIDs = append(permissionIDs, permission.ID)
+	}
+
+	return permissionIDs, nil
 }

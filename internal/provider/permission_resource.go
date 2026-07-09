@@ -6,9 +6,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"net/url"
-	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -31,6 +28,25 @@ func NewPermissionResource() resource.Resource {
 type PermissionResource struct {
 	client *permissions.Client
 }
+
+// permissionsPage adapts a raw /api/v1/permissions response page to the
+// shared getAllPages pagination helper.
+type permissionsPage struct {
+	Code        string                   `json:"code"`
+	Message     string                   `json:"message"`
+	NextToken   string                   `json:"next_token"`
+	Permissions []permissions.Permission `json:"permissions"`
+}
+
+func (p permissionsPage) getData() []permissions.Permission { return p.Permissions }
+
+func (p permissionsPage) getNextToken() string { return p.NextToken }
+
+// Compile-time assertion that permissionsPage satisfies kindePage. This also
+// keeps static analysis tools that don't fully trace generic instantiations
+// (e.g. getAllPages[permissions.Permission, permissionsPage]) from flagging
+// getData/getNextToken as unused.
+var _ kindePage[permissions.Permission] = permissionsPage{}
 
 func (r *PermissionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_permission"
@@ -250,51 +266,5 @@ func (r *PermissionResource) ImportState(ctx context.Context, req resource.Impor
 }
 
 func (r *PermissionResource) listAllPermissions(ctx context.Context) ([]permissions.Permission, error) {
-	const pageSize = 100
-
-	var (
-		results   []permissions.Permission
-		nextToken string
-	)
-
-	for {
-		response, err := r.fetchPermissionsPage(ctx, nextToken, pageSize)
-		if err != nil {
-			return nil, err
-		}
-
-		results = append(results, response.Permissions...)
-
-		if response.NextToken == "" {
-			break
-		}
-
-		nextToken = response.NextToken
-	}
-
-	return results, nil
-}
-
-func (r *PermissionResource) fetchPermissionsPage(ctx context.Context, nextToken string, pageSize int) (*permissions.ListResponse, error) {
-	query := url.Values{}
-
-	if pageSize > 0 {
-		query.Set("page_size", strconv.Itoa(pageSize))
-	}
-
-	if nextToken != "" {
-		query.Set("next_token", nextToken)
-	}
-
-	req, err := r.client.NewRequest(ctx, http.MethodGet, "/api/v1/permissions", query, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var response permissions.ListResponse
-	if err := r.client.DoRequest(req, &response); err != nil {
-		return nil, err
-	}
-
-	return &response, nil
+	return getAllPages[permissions.Permission, permissionsPage](ctx, r.client, "/api/v1/permissions", nil)
 }
