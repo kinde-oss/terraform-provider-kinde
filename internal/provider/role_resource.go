@@ -195,7 +195,12 @@ func (r *RoleResource) Create(ctx context.Context, req resource.CreateRequest, r
 	// Get the complete role data
 	role, err = r.getRole(ctx, role.ID)
 	if err != nil {
-		r.cleanupRoleOnCreateFailure(ctx, role.ID)
+		if cleanupErr := r.cleanupRoleOnCreateFailure(ctx, role.ID); cleanupErr != nil {
+			resp.Diagnostics.AddWarning(
+				"Role Create Rollback Failed",
+				fmt.Sprintf("Could not read created role and automatic rollback also failed for role ID %s: %s. Manual intervention may be required to delete the partially created role.", role.ID, cleanupErr),
+			)
+		}
 		resp.Diagnostics.AddError(
 			"Error Reading Created Role",
 			fmt.Sprintf("Could not read created role: %s", err),
@@ -228,7 +233,12 @@ func (r *RoleResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 		_, err = r.client.UpdatePermissions(ctx, role.ID, updatePermParams)
 		if err != nil {
-			r.cleanupRoleOnCreateFailure(ctx, role.ID)
+			if cleanupErr := r.cleanupRoleOnCreateFailure(ctx, role.ID); cleanupErr != nil {
+				resp.Diagnostics.AddWarning(
+					"Role Create Rollback Failed",
+					fmt.Sprintf("Could not set role permissions and automatic rollback also failed for role ID %s: %s. Manual intervention may be required to delete the partially created role.", role.ID, cleanupErr),
+				)
+			}
 			resp.Diagnostics.AddError(
 				"Error Setting Role Permissions",
 				fmt.Sprintf("Could not set permissions for role: %s", err),
@@ -239,7 +249,12 @@ func (r *RoleResource) Create(ctx context.Context, req resource.CreateRequest, r
 		// Get the updated role to ensure we have all fields and permissions
 		role, err = r.getRole(ctx, role.ID)
 		if err != nil {
-			r.cleanupRoleOnCreateFailure(ctx, role.ID)
+			if cleanupErr := r.cleanupRoleOnCreateFailure(ctx, role.ID); cleanupErr != nil {
+				resp.Diagnostics.AddWarning(
+					"Role Create Rollback Failed",
+					fmt.Sprintf("Could not read updated role and automatic rollback also failed for role ID %s: %s. Manual intervention may be required to delete the partially created role.", role.ID, cleanupErr),
+				)
+			}
 			resp.Diagnostics.AddError(
 				"Error Reading Updated Role",
 				fmt.Sprintf("Could not read updated role: %s", err),
@@ -261,12 +276,16 @@ func (r *RoleResource) Create(ctx context.Context, req resource.CreateRequest, r
 	resp.Diagnostics.Append(diags...)
 }
 
-func (r *RoleResource) cleanupRoleOnCreateFailure(ctx context.Context, roleID string) {
+func (r *RoleResource) cleanupRoleOnCreateFailure(ctx context.Context, roleID string) error {
 	if roleID == "" {
-		return
+		return nil
 	}
 
-	_ = r.client.Delete(ctx, roleID)
+	if err := r.client.Delete(ctx, roleID); err != nil && !isNotFoundError(err) {
+		return err
+	}
+
+	return nil
 }
 
 func (r *RoleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {

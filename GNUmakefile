@@ -1,4 +1,4 @@
-default: testacc
+default: test
 
 LOCAL_PROVIDER_DIR = $(CURDIR)/.tmp
 LOCAL_PROVIDER_BINARY = $(LOCAL_PROVIDER_DIR)/terraform-provider-kinde

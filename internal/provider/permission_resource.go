@@ -123,6 +123,12 @@ func (r *PermissionResource) Create(ctx context.Context, req resource.CreateRequ
 
 	permission, err = r.client.Search(ctx, searchParams)
 	if err != nil {
+		if cleanupErr := r.cleanupPermissionOnCreateFailure(ctx, permission.ID); cleanupErr != nil {
+			resp.Diagnostics.AddWarning(
+				"Permission Create Rollback Failed",
+				fmt.Sprintf("Could not read created permission and automatic rollback also failed for permission ID %s: %s. Manual intervention may be required to delete the partially created permission.", permission.ID, cleanupErr),
+			)
+		}
 		resp.Diagnostics.AddError(
 			"Error Reading Created Permission",
 			fmt.Sprintf("Could not read created permission: %s", err),
@@ -267,4 +273,16 @@ func (r *PermissionResource) ImportState(ctx context.Context, req resource.Impor
 
 func (r *PermissionResource) listAllPermissions(ctx context.Context) ([]permissions.Permission, error) {
 	return getAllPages[permissions.Permission, permissionsPage](ctx, r.client, "/api/v1/permissions", nil)
+}
+
+func (r *PermissionResource) cleanupPermissionOnCreateFailure(ctx context.Context, permissionID string) error {
+	if permissionID == "" {
+		return nil
+	}
+
+	if err := r.client.Delete(ctx, permissionID); err != nil && !isNotFoundError(err) {
+		return err
+	}
+
+	return nil
 }

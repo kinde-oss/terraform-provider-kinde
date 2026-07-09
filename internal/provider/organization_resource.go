@@ -209,57 +209,7 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 		}
 	}
 
-	// Set values from API response
-	if createParams.Code != "" {
-		plan.Code = types.StringValue(createParams.Code)
-		plan.ID = types.StringValue(createParams.Code)
-	} else {
-		plan.Code = types.StringValue(organization.Code)
-		plan.ID = types.StringValue(organization.Code)
-	}
-	plan.Name = types.StringValue(organization.Name)
-	plan.CreatedOn = types.StringValue(organization.CreatedOn.Format(time.RFC3339))
-	plan.ThemeCode = types.StringValue(organization.ColorScheme)
-
-	// Handle optional values
-	if organization.Handle != nil {
-		plan.Handle = types.StringValue(*organization.Handle)
-	} else if createParams.Handle != "" {
-		// Fallback to plan value if API doesn't return it
-		plan.Handle = types.StringValue(createParams.Handle)
-	} else {
-		plan.Handle = types.StringNull()
-	}
-
-	if organization.ExternalID != nil {
-		plan.ExternalID = types.StringValue(*organization.ExternalID)
-	} else {
-		plan.ExternalID = types.StringNull()
-	}
-
-	if organization.BackgroundColor != nil {
-		plan.BackgroundColor = types.StringValue(organization.BackgroundColor.Hex)
-	} else {
-		plan.BackgroundColor = types.StringNull()
-	}
-
-	if organization.ButtonColor != nil {
-		plan.ButtonColor = types.StringValue(organization.ButtonColor.Hex)
-	} else {
-		plan.ButtonColor = types.StringNull()
-	}
-
-	if organization.ButtonTextColor != nil {
-		plan.ButtonTextColor = types.StringValue(organization.ButtonTextColor.Hex)
-	} else {
-		plan.ButtonTextColor = types.StringNull()
-	}
-
-	if organization.LinkColor != nil {
-		plan.LinkColor = types.StringValue(organization.LinkColor.Hex)
-	} else {
-		plan.LinkColor = types.StringNull()
-	}
+	mapOrganizationToState(organization, &plan, createParams.Handle)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -303,49 +253,7 @@ func (r *OrganizationResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	// Set known values
-	state.Code = types.StringValue(organization.Code)
-	state.ID = types.StringValue(organization.Code)
-	state.Name = types.StringValue(organization.Name)
-	state.CreatedOn = types.StringValue(organization.CreatedOn.Format(time.RFC3339))
-	state.ThemeCode = types.StringValue(organization.ColorScheme)
-
-	// Handle optional values
-	if organization.Handle != nil {
-		state.Handle = types.StringValue(*organization.Handle)
-	} else {
-		state.Handle = types.StringNull()
-	}
-
-	if organization.ExternalID != nil {
-		state.ExternalID = types.StringValue(*organization.ExternalID)
-	} else {
-		state.ExternalID = types.StringNull()
-	}
-
-	if organization.BackgroundColor != nil {
-		state.BackgroundColor = types.StringValue(organization.BackgroundColor.Hex)
-	} else {
-		state.BackgroundColor = types.StringNull()
-	}
-
-	if organization.ButtonColor != nil {
-		state.ButtonColor = types.StringValue(organization.ButtonColor.Hex)
-	} else {
-		state.ButtonColor = types.StringNull()
-	}
-
-	if organization.ButtonTextColor != nil {
-		state.ButtonTextColor = types.StringValue(organization.ButtonTextColor.Hex)
-	} else {
-		state.ButtonTextColor = types.StringNull()
-	}
-
-	if organization.LinkColor != nil {
-		state.LinkColor = types.StringValue(organization.LinkColor.Hex)
-	} else {
-		state.LinkColor = types.StringNull()
-	}
+	mapOrganizationToState(organization, &state, "")
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -379,49 +287,7 @@ func (r *OrganizationResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	// Set known values
-	plan.Code = types.StringValue(organization.Code)
-	plan.ID = types.StringValue(organization.Code)
-	plan.Name = types.StringValue(organization.Name)
-	plan.CreatedOn = types.StringValue(organization.CreatedOn.Format(time.RFC3339))
-	plan.ThemeCode = types.StringValue(organization.ColorScheme)
-
-	// Handle optional values
-	if organization.Handle != nil {
-		plan.Handle = types.StringValue(*organization.Handle)
-	} else {
-		plan.Handle = types.StringNull()
-	}
-
-	if organization.ExternalID != nil {
-		plan.ExternalID = types.StringValue(*organization.ExternalID)
-	} else {
-		plan.ExternalID = types.StringNull()
-	}
-
-	if organization.BackgroundColor != nil {
-		plan.BackgroundColor = types.StringValue(organization.BackgroundColor.Hex)
-	} else {
-		plan.BackgroundColor = types.StringNull()
-	}
-
-	if organization.ButtonColor != nil {
-		plan.ButtonColor = types.StringValue(organization.ButtonColor.Hex)
-	} else {
-		plan.ButtonColor = types.StringNull()
-	}
-
-	if organization.ButtonTextColor != nil {
-		plan.ButtonTextColor = types.StringValue(organization.ButtonTextColor.Hex)
-	} else {
-		plan.ButtonTextColor = types.StringNull()
-	}
-
-	if organization.LinkColor != nil {
-		plan.LinkColor = types.StringValue(organization.LinkColor.Hex)
-	} else {
-		plan.LinkColor = types.StringNull()
-	}
+	mapOrganizationToState(organization, &plan, "")
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -462,49 +328,7 @@ func (r *OrganizationResource) ImportState(ctx context.Context, req resource.Imp
 	// Create a new state
 	var state OrganizationResourceModel
 
-	// Set known values
-	state.ID = types.StringValue(organization.Code)
-	state.Code = types.StringValue(organization.Code)
-	state.Name = types.StringValue(organization.Name)
-	state.CreatedOn = types.StringValue(organization.CreatedOn.Format(time.RFC3339))
-	state.ThemeCode = types.StringValue(organization.ColorScheme)
-
-	// Handle optional values
-	if organization.Handle != nil {
-		state.Handle = types.StringValue(*organization.Handle)
-	} else {
-		state.Handle = types.StringNull()
-	}
-
-	if organization.ExternalID != nil {
-		state.ExternalID = types.StringValue(*organization.ExternalID)
-	} else {
-		state.ExternalID = types.StringNull()
-	}
-
-	if organization.BackgroundColor != nil {
-		state.BackgroundColor = types.StringValue(organization.BackgroundColor.Hex)
-	} else {
-		state.BackgroundColor = types.StringNull()
-	}
-
-	if organization.ButtonColor != nil {
-		state.ButtonColor = types.StringValue(organization.ButtonColor.Hex)
-	} else {
-		state.ButtonColor = types.StringNull()
-	}
-
-	if organization.ButtonTextColor != nil {
-		state.ButtonTextColor = types.StringValue(organization.ButtonTextColor.Hex)
-	} else {
-		state.ButtonTextColor = types.StringNull()
-	}
-
-	if organization.LinkColor != nil {
-		state.LinkColor = types.StringValue(organization.LinkColor.Hex)
-	} else {
-		state.LinkColor = types.StringNull()
-	}
+	mapOrganizationToState(organization, &state, "")
 
 	// Set the state
 	diags := resp.State.Set(ctx, &state)
@@ -548,6 +372,52 @@ func buildOrganizationUpdateParams(plan OrganizationResourceModel) (organization
 	}
 
 	return params, needsUpdate
+}
+
+func mapOrganizationToState(org *organizations.Organization, model *OrganizationResourceModel, fallbackHandle string) {
+	model.ID = types.StringValue(org.Code)
+	model.Code = types.StringValue(org.Code)
+	model.Name = types.StringValue(org.Name)
+	model.CreatedOn = types.StringValue(org.CreatedOn.Format(time.RFC3339))
+	model.ThemeCode = types.StringValue(org.ColorScheme)
+
+	if org.Handle != nil {
+		model.Handle = types.StringValue(*org.Handle)
+	} else if fallbackHandle != "" {
+		model.Handle = types.StringValue(fallbackHandle)
+	} else {
+		model.Handle = types.StringNull()
+	}
+
+	if org.ExternalID != nil {
+		model.ExternalID = types.StringValue(*org.ExternalID)
+	} else {
+		model.ExternalID = types.StringNull()
+	}
+
+	if org.BackgroundColor != nil {
+		model.BackgroundColor = types.StringValue(org.BackgroundColor.Hex)
+	} else {
+		model.BackgroundColor = types.StringNull()
+	}
+
+	if org.ButtonColor != nil {
+		model.ButtonColor = types.StringValue(org.ButtonColor.Hex)
+	} else {
+		model.ButtonColor = types.StringNull()
+	}
+
+	if org.ButtonTextColor != nil {
+		model.ButtonTextColor = types.StringValue(org.ButtonTextColor.Hex)
+	} else {
+		model.ButtonTextColor = types.StringNull()
+	}
+
+	if org.LinkColor != nil {
+		model.LinkColor = types.StringValue(org.LinkColor.Hex)
+	} else {
+		model.LinkColor = types.StringNull()
+	}
 }
 
 func stringValueIfSet(value types.String) (string, bool) {

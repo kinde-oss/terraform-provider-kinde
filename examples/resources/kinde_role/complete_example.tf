@@ -1,3 +1,13 @@
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
+locals {
+  smoke_suffix = random_string.suffix.result
+}
+
 resource "kinde_permission" "view_users" {
   name        = "ms_${local.smoke_suffix}_view_users"
   key         = "ms_${local.smoke_suffix}_view_users"
