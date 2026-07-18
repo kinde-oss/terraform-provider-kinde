@@ -191,14 +191,15 @@ func (r *RoleResource) Create(ctx context.Context, req resource.CreateRequest, r
 		)
 		return
 	}
+	createdRoleID := role.ID
 
 	// Get the complete role data
-	role, err = r.getRole(ctx, role.ID)
+	role, err = r.getRole(ctx, createdRoleID)
 	if err != nil {
-		if cleanupErr := r.cleanupRoleOnCreateFailure(ctx, role.ID); cleanupErr != nil {
+		if cleanupErr := r.cleanupRoleOnCreateFailure(ctx, createdRoleID); cleanupErr != nil {
 			resp.Diagnostics.AddWarning(
 				"Role Create Rollback Failed",
-				fmt.Sprintf("Could not read created role and automatic rollback also failed for role ID %s: %s. Manual intervention may be required to delete the partially created role.", role.ID, cleanupErr),
+				fmt.Sprintf("Could not read created role and automatic rollback also failed for role ID %s: %s. Manual intervention may be required to delete the partially created role.", createdRoleID, cleanupErr),
 			)
 		}
 		resp.Diagnostics.AddError(
@@ -231,12 +232,12 @@ func (r *RoleResource) Create(ctx context.Context, req resource.CreateRequest, r
 			Permissions: permissionItems,
 		}
 
-		_, err = r.client.UpdatePermissions(ctx, role.ID, updatePermParams)
+		_, err = r.client.UpdatePermissions(ctx, createdRoleID, updatePermParams)
 		if err != nil {
-			if cleanupErr := r.cleanupRoleOnCreateFailure(ctx, role.ID); cleanupErr != nil {
+			if cleanupErr := r.cleanupRoleOnCreateFailure(ctx, createdRoleID); cleanupErr != nil {
 				resp.Diagnostics.AddWarning(
 					"Role Create Rollback Failed",
-					fmt.Sprintf("Could not set role permissions and automatic rollback also failed for role ID %s: %s. Manual intervention may be required to delete the partially created role.", role.ID, cleanupErr),
+					fmt.Sprintf("Could not set role permissions and automatic rollback also failed for role ID %s: %s. Manual intervention may be required to delete the partially created role.", createdRoleID, cleanupErr),
 				)
 			}
 			resp.Diagnostics.AddError(
@@ -247,12 +248,12 @@ func (r *RoleResource) Create(ctx context.Context, req resource.CreateRequest, r
 		}
 
 		// Get the updated role to ensure we have all fields and permissions
-		role, err = r.getRole(ctx, role.ID)
+		role, err = r.getRole(ctx, createdRoleID)
 		if err != nil {
-			if cleanupErr := r.cleanupRoleOnCreateFailure(ctx, role.ID); cleanupErr != nil {
+			if cleanupErr := r.cleanupRoleOnCreateFailure(ctx, createdRoleID); cleanupErr != nil {
 				resp.Diagnostics.AddWarning(
 					"Role Create Rollback Failed",
-					fmt.Sprintf("Could not read updated role and automatic rollback also failed for role ID %s: %s. Manual intervention may be required to delete the partially created role.", role.ID, cleanupErr),
+					fmt.Sprintf("Could not read updated role and automatic rollback also failed for role ID %s: %s. Manual intervention may be required to delete the partially created role.", createdRoleID, cleanupErr),
 				)
 			}
 			resp.Diagnostics.AddError(

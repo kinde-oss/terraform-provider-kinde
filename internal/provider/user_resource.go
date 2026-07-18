@@ -240,7 +240,12 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 	userID := user.ID
 	user, err = r.client.Get(ctx, userID)
 	if err != nil {
-		r.cleanupUserOnCreateFailure(ctx, userID)
+		if cleanupErr := r.cleanupUserOnCreateFailure(ctx, userID); cleanupErr != nil {
+			resp.Diagnostics.AddWarning(
+				"User Create Rollback Failed",
+				fmt.Sprintf("Could not read created user and automatic rollback also failed for user ID %s: %s. Manual intervention may be required to delete the partially created user.", userID, cleanupErr),
+			)
+		}
 		resp.Diagnostics.AddError(
 			"Error Reading Created User",
 			fmt.Sprintf("Could not read created user ID %s: %s", userID, err),
@@ -251,7 +256,12 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 	// Get final identities
 	finalIdentities, err := r.client.GetIdentities(ctx, userID)
 	if err != nil {
-		r.cleanupUserOnCreateFailure(ctx, userID)
+		if cleanupErr := r.cleanupUserOnCreateFailure(ctx, userID); cleanupErr != nil {
+			resp.Diagnostics.AddWarning(
+				"User Create Rollback Failed",
+				fmt.Sprintf("Could not read identities for created user and automatic rollback also failed for user ID %s: %s. Manual intervention may be required to delete the partially created user.", userID, cleanupErr),
+			)
+		}
 		resp.Diagnostics.AddError(
 			"Error Reading User Identities",
 			fmt.Sprintf("Could not read identities for user %s: %s", userID, err),
@@ -346,17 +356,20 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 // created but could not be fully read back, so that a failed Create does not
 // leave an orphaned user that Terraform state never tracks (and that
 // `terraform destroy` therefore cannot clean up).
-func (r *UserResource) cleanupUserOnCreateFailure(ctx context.Context, userID string) {
+func (r *UserResource) cleanupUserOnCreateFailure(ctx context.Context, userID string) error {
 	if userID == "" {
-		return
+		return nil
 	}
 
-	if err := r.client.Delete(ctx, userID); err != nil {
+	if err := r.client.Delete(ctx, userID); err != nil && !isNotFoundError(err) {
 		tflog.Warn(ctx, "Failed to clean up user after create failure", map[string]interface{}{
 			"id":    userID,
 			"error": err.Error(),
 		})
+		return err
 	}
+
+	return nil
 }
 
 func (r *UserResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {

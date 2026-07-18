@@ -112,6 +112,7 @@ func (r *PermissionResource) Create(ctx context.Context, req resource.CreateRequ
 		)
 		return
 	}
+	createdPermissionID := permission.ID
 
 	plan.ID = types.StringValue(permission.ID)
 
@@ -123,10 +124,10 @@ func (r *PermissionResource) Create(ctx context.Context, req resource.CreateRequ
 
 	permission, err = r.client.Search(ctx, searchParams)
 	if err != nil {
-		if cleanupErr := r.cleanupPermissionOnCreateFailure(ctx, permission.ID); cleanupErr != nil {
+		if cleanupErr := r.cleanupPermissionOnCreateFailure(ctx, createdPermissionID); cleanupErr != nil {
 			resp.Diagnostics.AddWarning(
 				"Permission Create Rollback Failed",
-				fmt.Sprintf("Could not read created permission and automatic rollback also failed for permission ID %s: %s. Manual intervention may be required to delete the partially created permission.", permission.ID, cleanupErr),
+				fmt.Sprintf("Could not read created permission and automatic rollback also failed for permission ID %s: %s. Manual intervention may be required to delete the partially created permission.", createdPermissionID, cleanupErr),
 			)
 		}
 		resp.Diagnostics.AddError(

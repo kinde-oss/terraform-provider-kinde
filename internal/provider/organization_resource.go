@@ -188,7 +188,12 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 	// Get the created organization to ensure we have all fields
 	organization, err = r.client.Get(ctx, code)
 	if err != nil {
-		r.cleanupOrganizationOnCreateFailure(ctx, code)
+		if cleanupErr := r.cleanupOrganizationOnCreateFailure(ctx, code); cleanupErr != nil {
+			resp.Diagnostics.AddWarning(
+				"Organization Create Rollback Failed",
+				fmt.Sprintf("Could not read created organization and automatic rollback also failed for organization code %s: %s. Manual intervention may be required to delete the partially created organization.", code, cleanupErr),
+			)
+		}
 		resp.Diagnostics.AddError(
 			"Error Reading Organization",
 			fmt.Sprintf("Could not read organization code %s: %s", code, err),
@@ -200,7 +205,12 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 	if updateParams, needsUpdate := buildOrganizationUpdateParams(plan); needsUpdate {
 		organization, err = r.client.Update(ctx, code, updateParams)
 		if err != nil {
-			r.cleanupOrganizationOnCreateFailure(ctx, code)
+			if cleanupErr := r.cleanupOrganizationOnCreateFailure(ctx, code); cleanupErr != nil {
+				resp.Diagnostics.AddWarning(
+					"Organization Create Rollback Failed",
+					fmt.Sprintf("Could not update created organization and automatic rollback also failed for organization code %s: %s. Manual intervention may be required to delete the partially created organization.", code, cleanupErr),
+				)
+			}
 			resp.Diagnostics.AddError(
 				"Error Updating Organization",
 				fmt.Sprintf("Could not update organization code %s after create: %s", code, err),
@@ -219,17 +229,20 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 // was successfully created but could not be fully configured, so that a
 // failed Create does not leave an orphaned organization that Terraform state
 // never tracks (and that `terraform destroy` therefore cannot clean up).
-func (r *OrganizationResource) cleanupOrganizationOnCreateFailure(ctx context.Context, code string) {
+func (r *OrganizationResource) cleanupOrganizationOnCreateFailure(ctx context.Context, code string) error {
 	if code == "" {
-		return
+		return nil
 	}
 
-	if err := r.client.Delete(ctx, code); err != nil {
+	if err := r.client.Delete(ctx, code); err != nil && !isNotFoundError(err) {
 		tflog.Warn(ctx, "Failed to clean up organization after create failure", map[string]interface{}{
 			"code":  code,
 			"error": err.Error(),
 		})
+		return err
 	}
+
+	return nil
 }
 
 func (r *OrganizationResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {

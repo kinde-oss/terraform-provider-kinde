@@ -105,7 +105,12 @@ func (r *APIResource) Create(ctx context.Context, req resource.CreateRequest, re
 	// Get the created API to populate computed fields
 	api, err = r.client.Get(ctx, createdAPI.ID)
 	if err != nil {
-		r.cleanupAPIOnCreateFailure(ctx, createdAPI.ID)
+		if cleanupErr := r.cleanupAPIOnCreateFailure(ctx, createdAPI.ID); cleanupErr != nil {
+			resp.Diagnostics.AddWarning(
+				"API Create Rollback Failed",
+				fmt.Sprintf("Could not read created API and automatic rollback also failed for API ID %s: %s. Manual intervention may be required to delete the partially created API.", createdAPI.ID, cleanupErr),
+			)
+		}
 		resp.Diagnostics.AddError(
 			"Error Reading API",
 			fmt.Sprintf("Could not read API ID %s: %s", createdAPI.ID, err),
@@ -122,17 +127,20 @@ func (r *APIResource) Create(ctx context.Context, req resource.CreateRequest, re
 // created but could not be fully read back, so that a failed Create does not
 // leave an orphaned API that Terraform state never tracks (and that
 // `terraform destroy` therefore cannot clean up).
-func (r *APIResource) cleanupAPIOnCreateFailure(ctx context.Context, apiID string) {
+func (r *APIResource) cleanupAPIOnCreateFailure(ctx context.Context, apiID string) error {
 	if apiID == "" {
-		return
+		return nil
 	}
 
-	if err := r.client.Delete(ctx, apiID); err != nil {
+	if err := r.client.Delete(ctx, apiID); err != nil && !isNotFoundError(err) {
 		tflog.Warn(ctx, "Failed to clean up API after create failure", map[string]interface{}{
 			"id":    apiID,
 			"error": err.Error(),
 		})
+		return err
 	}
+
+	return nil
 }
 
 func (r *APIResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {

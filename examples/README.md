@@ -24,6 +24,8 @@ This target will:
 - create a temporary Terraform CLI config with a provider development override
 - run `init`, `validate`, `plan`, `apply`, a second `plan`, and `destroy`
 
+> [!IMPORTANT] Smoke examples assume the M2M client used by the provider has the required management scopes for the full lifecycle of each resource (`create`, `read`, `update` when applicable, and `delete`). If `delete` is missing, rollback or destroy steps may require manual cleanup in Kinde.
+
 To run that smoke flow across every resource example folder, use:
 
 ```sh

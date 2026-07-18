@@ -197,7 +197,12 @@ func (r *ApplicationResource) Create(ctx context.Context, req resource.CreateReq
 
 		err = r.client.Update(ctx, app.ID, updateParams)
 		if err != nil {
-			r.cleanupApplicationOnCreateFailure(ctx, app.ID)
+			if cleanupErr := r.cleanupApplicationOnCreateFailure(ctx, app.ID); cleanupErr != nil {
+				resp.Diagnostics.AddWarning(
+					"Application Create Rollback Failed",
+					fmt.Sprintf("Could not update created application and automatic rollback also failed for application ID %s: %s. Manual intervention may be required to delete the partially created application.", app.ID, cleanupErr),
+				)
+			}
 			resp.Diagnostics.AddError(
 				"Error Updating Application",
 				fmt.Sprintf("Could not update application ID %s: %s", app.ID, err),
@@ -218,17 +223,20 @@ func (r *ApplicationResource) Create(ctx context.Context, req resource.CreateReq
 // successfully created but could not be fully configured, so that a failed
 // Create does not leave an orphaned application that Terraform state never
 // tracks (and that `terraform destroy` therefore cannot clean up).
-func (r *ApplicationResource) cleanupApplicationOnCreateFailure(ctx context.Context, applicationID string) {
+func (r *ApplicationResource) cleanupApplicationOnCreateFailure(ctx context.Context, applicationID string) error {
 	if applicationID == "" {
-		return
+		return nil
 	}
 
-	if err := r.client.Delete(ctx, applicationID); err != nil {
+	if err := r.client.Delete(ctx, applicationID); err != nil && !isNotFoundError(err) {
 		tflog.Warn(ctx, "Failed to clean up application after create failure", map[string]interface{}{
 			"id":    applicationID,
 			"error": err.Error(),
 		})
+		return err
 	}
+
+	return nil
 }
 
 func (r *ApplicationResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
