@@ -1,8 +1,9 @@
 schema_version = 1
 
 project {
-  license        = "MPL-2.0"
-  copyright_year = 2021
+  license          = "MPL-2.0"
+  copyright_year   = 2025
+  copyright_holder = "Kinde Australia Pty Ltd"
 
   header_ignore = [
     # examples used within documentation (prose)
