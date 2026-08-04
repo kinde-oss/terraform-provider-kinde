@@ -16,5 +16,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Data sources: `kinde_api`, `kinde_application`, `kinde_connections`.
 
 [Unreleased]: https://github.com/kinde-oss/terraform-provider-kinde/commits/main
-</content>
-</invoke>
