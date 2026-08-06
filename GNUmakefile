@@ -4,7 +4,7 @@ LOCAL_PROVIDER_DIR = $(CURDIR)/.tmp
 LOCAL_PROVIDER_BINARY = $(LOCAL_PROVIDER_DIR)/terraform-provider-kinde
 LOCAL_PROVIDER_TFRC = $(LOCAL_PROVIDER_DIR)/terraform-dev.tfrc
 EXAMPLE ?= examples/resources/kinde_role
-PROVIDER_SOURCE ?= nxt-fwd/kinde
+PROVIDER_SOURCE ?= kinde-oss/kinde
 RESOURCE_EXAMPLES := $(sort $(wildcard examples/resources/*))
 
 # Run acceptance tests

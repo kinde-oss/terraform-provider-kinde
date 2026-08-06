@@ -16,7 +16,7 @@ When testing the provider locally before publishing it to a registry, Terraform 
 make example-smoke EXAMPLE=examples/resources/kinde_role
 ```
 
-A plain `go install .` followed by `terraform init` in an example directory is not enough. Terraform will still try to resolve `nxt-fwd/kinde` from `registry.terraform.io`, and that will fail until the provider is published there. Use the development-override workflow instead.
+A plain `go install .` followed by `terraform init` in an example directory is not enough. Terraform will still try to resolve `kinde-oss/kinde` from `registry.terraform.io`, and that will fail until the provider is published there. Use the development-override workflow instead.
 
 This target will:
 

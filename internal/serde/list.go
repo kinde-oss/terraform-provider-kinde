@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) Kinde Australia Pty Ltd
 // SPDX-License-Identifier: MPL-2.0
 
 package serde

@@ -1,4 +1,4 @@
-module github.com/nxt-fwd/terraform-provider-kinde
+module github.com/kinde-oss/terraform-provider-kinde
 
 go 1.23.0
 
