@@ -8,8 +8,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/nxt-fwd/kinde-go/api/applications"
 	"github.com/kinde-oss/terraform-provider-kinde/internal/serde"
+	"github.com/nxt-fwd/kinde-go/api/applications"
 )
 
 type ApplicationResourceModel struct {
