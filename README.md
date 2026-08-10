@@ -18,7 +18,32 @@ Requires Terraform 1.0+ and Go 1.23+
 
 The provider authenticates as a Machine-to-Machine (M2M) application. Before you begin, create an M2M application in Kinde, authorize it for the Management API, and grant the scopes for the resources you intend to manage.
 
-Grant `create`, `read`, `update`, and `delete` scopes for each resource type. Without delete, Terraform cannot destroy what it creates, and failed applies may leave resources behind that need cleaning up by hand.
+Management API scopes are resource-specific. Grant only the scopes for the resources in your configuration:
+
+| Resource | Required scopes |
+| --- | --- |
+| `kinde_api` | `create:apis`, `read:apis`, `delete:apis` |
+| `kinde_application` | `create:applications`, `read:applications`, `update:applications`, `delete:applications` |
+| `kinde_application_connection` | `create:application_connections`, `read:application_connections`, `delete:application_connections` |
+| `kinde_connection` | `create:connections`, `read:connections`, `update:connections`, `delete:connections` |
+| `kinde_organization` | `create:organizations`, `read:organizations`, `update:organizations`, `delete:organizations` |
+| `kinde_organization_user` | `create:organization_users`, `read:organization_users`, `update:organization_users`, `delete:organization_users` |
+| `kinde_permission` | `create:permissions`, `read:permissions`, `update:permissions`, `delete:permissions` |
+| `kinde_role` | `create:roles`, `read:roles`, `update:roles`, `delete:roles`, `read:role_permissions`, `update:role_permissions`, `delete:role_permissions` |
+| `kinde_user` | `create:users`, `read:users`, `update:users`, `delete:users`, `create:user_identities`, `read:user_identities` |
+| `kinde_user_role` | `create:organization_user_roles`, `read:organization_user_roles`, `delete:organization_user_roles` |
+
+| Data source | Required scopes |
+| --- | --- |
+| `kinde_api` | `read:apis` |
+| `kinde_application` | `read:applications` |
+| `kinde_connections` | `read:connections` |
+
+Setting the `roles` attribute on `kinde_organization_user` also requires the `organization_user_roles` scopes listed above for `kinde_user_role`.
+
+`kinde_api` has no update scope because the Kinde API does not support updating an API — changing one replaces it.
+
+Grant the `delete:` scopes for anything you manage. Without them Terraform cannot destroy what it creates, and a failed apply may leave resources behind that need cleaning up by hand.
 
 ### Installation
 
@@ -155,14 +180,24 @@ resource "kinde_user" "jane" {
 resource "kinde_organization_user" "jane_acme" {
   organization_code = kinde_organization.acme.code
   user_id           = kinde_user.jane.id
+
+  # kinde_user_role manages role assignments for this membership.
+  lifecycle {
+    ignore_changes = [roles]
+  }
 }
 
 resource "kinde_user_role" "jane_finance" {
   organization_code = kinde_organization.acme.code
   user_id           = kinde_user.jane.id
   role_id           = kinde_role.finance.id
+
+  # A user must be a member of the organization before roles can be assigned.
+  depends_on = [kinde_organization_user.jane_acme]
 }
 ```
+
+A role can only be assigned to a user who is already a member of the organization. Because `kinde_user_role` references the organization and user directly rather than the membership, Terraform cannot infer that ordering — declare it with `depends_on`.
 
 ## Importing existing resources
 
@@ -212,7 +247,14 @@ Use `make example-smoke-all` to run it across every resource example. See [examp
    go mod download
    ```
 
-4. Build the provider and run the unit tests:
+4. Install the tools the `make` targets call. `make build` runs `docs-validate`, which needs `tfplugindocs`, and `make lint` needs `golangci-lint`. Use the versions this repository pins, so local runs match CI:
+
+   ```bash
+   go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.19.4
+   go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+   ```
+
+5. Build the provider and run the unit tests:
 
    ```bash
    make build
@@ -230,6 +272,8 @@ Documentation in `docs/` is generated from the resource schemas and the files in
 ```bash
 cd tools && go generate ./...
 ```
+
+This runs the generators through the nested `tools` module, so it works without the installed binaries from step 4.
 
 Other useful targets:
 
