@@ -119,7 +119,7 @@ provider "kinde" {}
 
 ### Key Features
 
-- Full create, read, update, and delete lifecycle for every resource
+- Lifecycle support varies by resource; see the resource documentation for supported operations
 - Import support for adopting existing Kinde configuration
 - Paginated reads, so large roles and permission sets are not silently truncated
 - Automatic rollback of partially created resources when a create fails
