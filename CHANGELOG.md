@@ -1,1 +1,18 @@
-<!-- Ideally, this should get auto-generated via tools like [auto-changelog](https://github.com/CookPete/auto-changelog). Eventually, this will get set up as part of the repository template. -->
+# Changelog
+
+All notable changes to this provider are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- Initial provider surface for the Kinde Management API.
+  - Resources: `kinde_api`, `kinde_application`, `kinde_application_connection`,
+    `kinde_connection`, `kinde_organization`, `kinde_organization_user`,
+    `kinde_permission`, `kinde_role`, `kinde_user`, `kinde_user_role`.
+  - Data sources: `kinde_api`, `kinde_application`, `kinde_connections`.
+
+[Unreleased]: https://github.com/kinde-oss/terraform-provider-kinde/commits/main

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) Kinde Australia Pty Ltd
 // SPDX-License-Identifier: MPL-2.0
 
 package provider
@@ -10,8 +10,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/kinde-oss/terraform-provider-kinde/internal/serde"
 	"github.com/nxt-fwd/kinde-go/api/roles"
-	"github.com/nxt-fwd/terraform-provider-kinde/internal/serde"
 )
 
 type RoleResourceModel struct {

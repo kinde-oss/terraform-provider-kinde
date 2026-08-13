@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) Kinde Australia Pty Ltd
 // SPDX-License-Identifier: MPL-2.0
 
 package provider
@@ -18,7 +18,7 @@ func TestAccAPIDataSource(t *testing.T) {
 				Config: testAccAPIDataSourceConfig(),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.kinde_api.test", "name", "Terraform Acceptance Test API"),
-					resource.TestCheckResourceAttr("data.kinde_api.test", "audience", "https://registry.terraform.io/providers/nxt-fwd/kinde"),
+					resource.TestCheckResourceAttr("data.kinde_api.test", "audience", "https://registry.terraform.io/providers/kinde-oss/kinde"),
 				),
 			},
 		},
@@ -29,7 +29,7 @@ func testAccAPIDataSourceConfig() string {
 	return `
 resource "kinde_api" "test" {
 	name     = "Terraform Acceptance Test API"
-	audience = "https://registry.terraform.io/providers/nxt-fwd/kinde"
+	audience = "https://registry.terraform.io/providers/kinde-oss/kinde"
 }
 
 data "kinde_api" "test" {

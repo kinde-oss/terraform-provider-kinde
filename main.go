@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) Kinde Australia Pty Ltd
 // SPDX-License-Identifier: MPL-2.0
 
 package main
@@ -9,7 +9,7 @@ import (
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"github.com/nxt-fwd/terraform-provider-kinde/internal/provider"
+	"github.com/kinde-oss/terraform-provider-kinde/internal/provider"
 )
 
 var (
@@ -28,7 +28,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.terraform.io/nxt-fwd/kinde",
+		Address: "registry.terraform.io/kinde-oss/kinde",
 		Debug:   debug,
 	}
 
