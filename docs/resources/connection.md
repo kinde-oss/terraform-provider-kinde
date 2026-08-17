@@ -19,7 +19,7 @@ Manages a connection in Kinde.
 
 - `display_name` (String) Display name of the connection
 - `name` (String) Name of the connection
-- `strategy` (String) Strategy of the connection
+- `strategy` (String) Strategy of the connection. Changing this forces a new connection to be created, because the Kinde API does not support updating the strategy of an existing connection.
 
 ### Optional
 

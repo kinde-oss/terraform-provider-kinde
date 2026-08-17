@@ -139,8 +139,11 @@ func (r *ConnectionResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Required:            true,
 			},
 			"strategy": schema.StringAttribute{
-				MarkdownDescription: "Strategy of the connection",
+				MarkdownDescription: "Strategy of the connection. Changing this forces a new connection to be created, because the Kinde API does not support updating the strategy of an existing connection.",
 				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"options": schema.SingleNestedAttribute{
 				MarkdownDescription: `Options for the connection. Required for OAuth2 connections.

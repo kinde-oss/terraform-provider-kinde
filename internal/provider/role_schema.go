@@ -43,6 +43,7 @@ func expandRoleCreateParams(plan RoleResourceModel) roles.CreateParams {
 func expandRoleUpdateParams(plan RoleResourceModel) roles.UpdateParams {
 	return roles.UpdateParams{
 		Name:        plan.Name.ValueString(),
+		Key:         plan.Key.ValueString(),
 		Description: plan.Description.ValueString(),
 	}
 }
