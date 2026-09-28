@@ -1,3 +1,7 @@
 * @kinde-oss/giants-kinde
-package.json @kinde-oss/sdk-engineers
-**/package.json @kinde-oss/sdk-engineers
+
+# Dependency-related files
+go.mod @kinde-oss/sdk-engineers
+**/go.mod @kinde-oss/sdk-engineers
+go.sum @kinde-oss/sdk-engineers
+**/go.sum @kinde-oss/sdk-engineers
