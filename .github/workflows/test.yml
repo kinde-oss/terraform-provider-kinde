@@ -18,17 +18,47 @@ on:
 permissions:
   contents: read
 
-# Acceptance tests share one Kinde business, so queue runs instead of racing.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
+  # Acceptance tests create real resources in a shared Kinde business, so pull
+  # requests that only touch docs, examples or repo metadata skip them.
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      acceptance: ${{ steps.filter.outputs.acceptance }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # The pull request merge commit and its base parent.
+          fetch-depth: 2
+      - id: filter
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "acceptance=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed=$(git diff --name-only HEAD^1 HEAD)
+          echo "$changed"
+
+          if grep -qE '^(main\.go$|go\.(mod|sum)$|internal/|\.github/workflows/test\.yml$)' <<< "$changed"; then
+            echo "acceptance=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "acceptance=false" >> "$GITHUB_OUTPUT"
+          fi
+
   # Ensure project builds before running testing matrix
   build:
     name: Build
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # A new push to a pull request supersedes the previous build.
+    concurrency:
+      group: ${{ github.workflow }}-build-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
@@ -44,6 +74,9 @@ jobs:
 
   generate:
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-generate-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
@@ -65,18 +98,24 @@ jobs:
   # Run acceptance tests in a matrix with Terraform CLI versions
   test:
     name: Terraform Provider Acceptance Tests
-    needs: build
+    needs: [changes, build]
+    if: needs.changes.outputs.acceptance == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Every branch shares one Kinde business, so only one suite runs at a time
+    # across the whole repository. In-progress runs are never cancelled, as that
+    # would leave test resources behind in the business.
+    concurrency:
+      group: kinde-acceptance-tests
+      cancel-in-progress: false
     strategy:
       fail-fast: false
       # Each job runs the full suite against the same business.
       max-parallel: 1
       matrix:
-        # Oldest supported version and the current release.
-        terraform:
-          - '1.0.*'
-          - 'latest'
+        # Pull requests test the current release; main also tests the oldest
+        # supported version.
+        terraform: ${{ fromJSON(github.event_name == 'pull_request' && '["latest"]' || '["1.0.*", "latest"]') }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
