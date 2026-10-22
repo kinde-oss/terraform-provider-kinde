@@ -2,7 +2,7 @@ module github.com/kinde-oss/terraform-provider-kinde
 
 go 1.23.0
 
-toolchain go1.23.6
+toolchain go1.27.2
 
 require (
 	github.com/hashicorp/terraform-plugin-framework v1.14.0
