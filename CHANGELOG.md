@@ -15,4 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `kinde_permission`, `kinde_role`, `kinde_user`, `kinde_user_role`.
   - Data sources: `kinde_api`, `kinde_application`, `kinde_connections`.
 
+### Changed
+
+- Upgraded to Go toolchain 1.27.3 (minimum `go` 1.26.0) and to
+  `terraform-plugin-framework` v1.19.0, `terraform-plugin-go` v0.31.0,
+  `terraform-plugin-log` v0.11.0 and `terraform-plugin-testing` v1.16.0.
+
 [Unreleased]: https://github.com/kinde-oss/terraform-provider-kinde/commits/main
